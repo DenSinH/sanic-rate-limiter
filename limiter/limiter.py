@@ -6,13 +6,28 @@ from sanic import Request, HTTPResponse
 from sanic import Websocket
 
 
-async def default_identifier(request: Union[Request, Websocket]):
+def get_client_address(request: Union[Request, Websocket]):
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         ip = forwarded.split(",")[0]
-    else:
-        ip = request.client_ip
-    print(request.route.path)
+        if ip:
+            return ip
+    forwarded = request.headers.get('CF-Connecting-IP')
+    if forwarded:
+        return forwarded
+    forwarded = request.headers.get('X-Real-IP')
+    if forwarded:
+        return forwarded
+    forwarded = request.headers.get('Forwarded')
+    if forwarded:
+        ip = forwarded.split(';')[0].split('=')[1].strip()
+        if ip:
+            return ip
+    return request.client_ip
+
+
+async def default_identifier(request: Union[Request, Websocket]):
+    ip = get_client_address(request)
     return ip + ":" + request.route.path
 
 

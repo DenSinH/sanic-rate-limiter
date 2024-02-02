@@ -1,7 +1,7 @@
 from sanic import Sanic, Request
 import sanic
 import redis.asyncio as redis
-from limiter import SanicLimiter, RateLimiter
+from limiter import SanicLimiter, RateLimiter, TooManyRequests
 
 
 app = Sanic(__name__)
@@ -27,6 +27,13 @@ async def close_limiter(app: Sanic, loop):
 
 app.before_server_start(init_limiter)
 app.after_server_stop(close_limiter)
+
+
+@app.exception(TooManyRequests)
+async def too_many_requests(request: Request, exc: TooManyRequests):
+    return sanic.json({
+        "error": "Too many requests"
+    }, exc.status_code)
 
 
 @app.get("/", ctx_limiter=RateLimiter(times=1, seconds=1))
